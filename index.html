@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>あとでやるタスク</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="あとでやる">
+<meta name="theme-color" content="#3366E6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one-column phone app — counters, filter chips, task list, fixed capture bar at the bottom; sheets slide up for editing */
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --ink:#1B2130; --muted:#6A7387; --line:#DDE2EC;
+  --accent:#3366E6; --accent-ink:#FFFFFF; --accent-soft:#E6EDFD;
+  --danger:#D2433A; --danger-soft:#FBE9E7; --ok:#2E8B57;
+  --c-hr:#3366E6; --c-hr-soft:#E6EDFD;
+  --c-on:#0F8A7E; --c-on-soft:#DDF3F0;
+  --c-sch:#B7791F; --c-sch-soft:#FBF0DC;
+  --c-job:#7A4FD6; --c-job-soft:#EFE8FC;
+  --c-etc:#5D6678; --c-etc-soft:#ECEEF3;
+  --shadow:0 1px 2px rgba(20,30,60,.06);
+  --font:"Zen Kaku Gothic New","Hiragino Sans","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12151C; --surface:#1B2029; --ink:#E8ECF4; --muted:#98A1B3; --line:#2C3340;
+  --accent:#6B91F5; --accent-ink:#0E1424; --accent-soft:#1F2C4D;
+  --danger:#F07A70; --danger-soft:#3A1F1E; --ok:#5BC48A;
+  --c-hr:#7C9EF7; --c-hr-soft:#1F2C4D; --c-on:#4FC8BA; --c-on-soft:#143430;
+  --c-sch:#E3AE5A; --c-sch-soft:#382B15; --c-job:#AE8DF2; --c-job-soft:#2A2142;
+  --c-etc:#A3ABBB; --c-etc-soft:#262C37; --shadow:none; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151C; --surface:#1B2029; --ink:#E8ECF4; --muted:#98A1B3; --line:#2C3340;
+  --accent:#6B91F5; --accent-ink:#0E1424; --accent-soft:#1F2C4D;
+  --danger:#F07A70; --danger-soft:#3A1F1E; --ok:#5BC48A;
+  --c-hr:#7C9EF7; --c-hr-soft:#1F2C4D; --c-on:#4FC8BA; --c-on-soft:#143430;
+  --c-sch:#E3AE5A; --c-sch-soft:#382B15; --c-job:#AE8DF2; --c-job-soft:#2A2142;
+  --c-etc:#A3ABBB; --c-etc-soft:#262C37; --shadow:none; color-scheme:dark}
+*{box-sizing:border-box}
+html{color-scheme:light}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}
+.calb{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:3px 10px;font-size:13px;display:inline-flex;gap:4px;align-items:center}
+.calb.on{color:var(--ok);border-color:transparent;background:none;padding-left:0}
+.setrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+header{display:flex;align-items:center;gap:6px}
+header h1{min-width:0;white-space:nowrap;overflow:hidden;font-size:17px;font-weight:700;margin:0;flex:1;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+header h1 .pin{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.hbtn{border:1px solid var(--line);background:var(--surface);border-radius:12px;height:40px;padding:0 10px;flex:none;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500}
+.hbtn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hbtn svg{width:18px;height:18px}
+.dot{min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;display:inline-grid;place-items:center;padding:0 5px;font-weight:700}
+.counters{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.cnt{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:10px 4px;text-align:center;box-shadow:var(--shadow)}
+.cnt b{display:block;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
+.cnt span{font-size:13px;color:var(--muted)}
+.cnt.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.cnt.on span{color:var(--accent-ink)}
+.cnt .late{font-size:11px;color:var(--danger);display:block;height:14px;line-height:14px}
+.cnt.on .late{color:var(--accent-ink)}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:12px calc(-1*max(16px,env(safe-area-inset-left,0px))) 0;padding:2px max(16px,env(safe-area-inset-left,0px)) 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:14px;white-space:nowrap}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sec{font-size:13px;color:var(--muted);margin:18px 2px 8px;font-weight:500;display:flex;gap:8px;align-items:baseline}
+.sec.late{color:var(--danger)}
+.list{display:flex;flex-direction:column;gap:8px}
+.task{display:flex;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+.task.done .ttl{text-decoration:line-through;color:var(--muted)}
+.chk{flex:none;width:28px;height:28px;border-radius:50%;border:2px solid var(--muted);background:none;display:grid;place-items:center;padding:0}
+.chk svg{width:16px;height:16px;opacity:0}
+.task.done .chk{background:var(--ok);border-color:var(--ok)}
+.task.done .chk svg{opacity:1;color:#fff}
+.tb{flex:1;min-width:0}
+.ttl{font-weight:500;word-break:break-word;background:none;border:0;padding:0;text-align:left;width:100%;display:block}
+.meta{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin-top:4px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tag{border-radius:6px;padding:1px 8px;font-size:12px;font-weight:500}
+.t-hr{background:var(--c-hr-soft);color:var(--c-hr)} .t-on{background:var(--c-on-soft);color:var(--c-on)}
+.t-sch{background:var(--c-sch-soft);color:var(--c-sch)} .t-job{background:var(--c-job-soft);color:var(--c-job)}
+.t-etc{background:var(--c-etc-soft);color:var(--c-etc)}
+.when.late{color:var(--danger);font-weight:700}
+.bell{width:14px;height:14px;vertical-align:-2px}
+.note{font-size:13px;color:var(--muted);margin-top:4px;white-space:pre-wrap;word-break:break-word}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.qb{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:3px 10px;font-size:13px}
+.empty{text-align:center;color:var(--muted);padding:40px 12px;border:1px dashed var(--line);border-radius:14px;margin-top:16px;font-size:14px}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));z-index:5}
+.bar form{max-width:560px;margin:0 auto;display:flex;gap:8px}
+.bar input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:0 12px;height:46px;font-size:16px}
+.btn{height:46px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 14px;font-weight:500;white-space:nowrap}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.btn.danger{color:var(--danger);border-color:var(--danger-soft);background:var(--danger-soft)}
+.btn.sm{height:36px;font-size:14px;padding:0 12px;border-radius:10px}
+.storage{font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
+/* candidates */
+.cand{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+.cand.closed{opacity:.6}
+.ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ch b{font-size:16px}
+.media{font-size:12px;border:1px solid var(--line);border-radius:6px;padding:0 6px;color:var(--muted)}
+.steps{display:flex;gap:4px;margin-top:10px;overflow-x:auto;padding-bottom:2px}
+.st{flex:none;font-size:12px;border-radius:999px;padding:3px 9px;border:1px solid var(--line);color:var(--muted);background:none}
+.st.past{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.st.cur{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.st.post{border-style:dashed}
+.st.post.past{border-style:solid;background:var(--c-on-soft);color:var(--c-on)}
+.st.post.cur{background:var(--c-on);border-color:var(--c-on);color:#fff}
+.cnext{margin-top:10px;font-size:13px;color:var(--muted)}
+.cnext strong{color:var(--ink)}
+.cact{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.ctasks{margin-top:8px;font-size:13px;display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.ctasks .late{color:var(--danger)}
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,14,24,.45);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;max-height:92%;overflow-y:auto;padding-top:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet h2{font-size:17px;margin:0 0 12px;text-wrap:balance}
+.fld{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.fld label,.lbl{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.fld input,.fld select,.fld textarea{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;font-size:16px;width:100%;min-width:0}
+.fld textarea{min-height:70px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 12px;font-size:14px}
+.seg button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sact{display:flex;gap:8px;margin-top:6px}
+.sact .btn{flex:1}
+.preview{background:var(--bg);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;font-variant-numeric:tabular-nums}
+.preview div{display:flex;gap:10px}
+.preview span:first-child{color:var(--muted);flex:none;width:124px}
+.help{font-size:13px;color:var(--muted);line-height:1.7}
+.help ol{padding-left:20px;margin:6px 0}
+.copybox{width:100%;min-height:120px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 16px;font-size:14px;z-index:20;max-width:90%;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .2s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>あとでやるタスク</h1>
+    <button class="hbtn" id="flowBtn" type="button">採用フロー</button>
+    <button class="hbtn" id="setBtn" type="button" aria-label="設定"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    <button class="hbtn" id="bellBtn" type="button" aria-label="リマインド"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span id="bellDot" class="dot" hidden></span></button>
+  </header>
+
+  <section id="taskView">
+    <div class="counters" id="counters"></div>
+    <div class="chips" id="chips"></div>
+    <div id="list"></div>
+  </section>
+
+  <section id="flowView" hidden>
+    <div class="sec" style="justify-content:space-between;align-items:center">
+      <span>候補者ごとの進捗</span>
+      <button class="btn sm pri" id="addCand" type="button">＋ 候補者を追加</button>
+    </div>
+    <div class="chips" id="candChips"></div>
+    <div class="list" id="candList"></div>
+  </section>
+  <div class="storage" id="storage"></div>
+</div>
+
+<div class="bar" id="bar">
+  <form id="cap">
+    <input id="capIn" autocomplete="off" placeholder="思いついたらここに（未定に入ります）" enterkeyhint="done">
+    <button class="btn pri" type="submit">追加</button>
+    <button class="btn" type="button" id="capDetail">詳細</button>
+  </form>
+</div>
+<div id="sheetRoot"></div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- constants ---------- */
+const CATS=[["hr","人事・採用"],["on","入社後"],["sch","学校"],["job","就活"],["etc","その他"]];
+const CATNAME=Object.fromEntries(CATS);
+const MEDIA={
+  coco:{n:"ココシロ",s:["応募","面談調整","面談実施","内定","入社後研修","入社"]},
+  ref:{n:"リファラル",s:["トスアップ","面談調整","面談実施","内定","入社後研修","入社"]},
+  infS:{n:"Infla（自己応募）",s:["応募","面談調整","面談実施","通過","2次面談実施","通過/内定","入社後研修","入社"]},
+  infC:{n:"Infla（スカウト）",s:["応募","面談調整","面談実施","通過","2次面談実施","通過/内定","入社後研修","入社"]}
+};
+const POST=["入社手続き","入社後面談 日程回収","入社後面談 日程調整","入社後面談 実施","定着"];
+const WD="日月火水木金土";
+
+/* ---------- date utils (local time) ---------- */
+const pad=n=>String(n).padStart(2,"0");
+const ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const hm=d=>pad(d.getHours())+":"+pad(d.getMinutes());
+const parse=(ds,ts)=>{const [y,m,d]=ds.split("-").map(Number);const [h,mi]=(ts||"23:59").split(":").map(Number);return new Date(y,m-1,d,h,mi)};
+const addDays=(ds,n)=>{const d=parse(ds,"12:00");d.setDate(d.getDate()+n);return ymd(d)};
+const today=()=>ymd(new Date());
+const label=ds=>{const d=parse(ds,"12:00");const t=today();const base=(d.getMonth()+1)+"/"+d.getDate()+"("+WD[d.getDay()]+")";
+  if(ds===t)return base+" 今日";if(ds===addDays(t,1))return base+" 明日";if(ds===addDays(t,-1))return base+" 昨日";return base};
+const shortDate=ds=>{const d=parse(ds,"12:00");return (d.getMonth()+1)+"/"+d.getDate()+"("+WD[d.getDay()]+")"};
+const isLate=t=>!t.done&&t.date&&parse(t.date,t.time||"23:59")<new Date();
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+const el=(tag,attrs,...kids)=>{const e=document.createElement(tag);if(attrs)for(const k in attrs){const v=attrs[k];if(v==null||v===false)continue;
+  if(k==="class")e.className=v;else if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else if(k==="html")e.innerHTML=v;else e.setAttribute(k,v===true?"":v)}
+  for(const k of kids.flat()){if(k==null||k===false)continue;e.append(k.nodeType?k:document.createTextNode(String(k)))}return e};
+const BELL='<svg class="bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/></svg>';
+
+/* ---------- store: on-device (localStorage) ---------- */
+const S={tasks:{},cands:{},settings:{lead:0,lastBackup:0},mode:"local"};
+const LS="atodeyaru.v1";
+function lsLoad(){try{const j=JSON.parse(localStorage.getItem(LS)||"{}");S.tasks=j.tasks||{};S.cands=j.cands||{};S.settings=Object.assign(S.settings,j.settings||{})}catch(e){}}
+function lsSave(){try{localStorage.setItem(LS,JSON.stringify({tasks:S.tasks,cands:S.cands,settings:S.settings}))}catch(e){toast("保存できませんでした（容量不足の可能性）")}}
+function put(col,id,data){S[col][id]=data;lsSave();render()}
+function del(col,id){delete S[col][id];lsSave();render()}
+const putTask=t=>put("tasks",t.id,t);
+const putCand=c=>put("cands",c.id,c);
+function initStore(){
+  lsLoad();
+  if(!Object.keys(S.tasks).length&&!localStorage.getItem(LS+".seeded")){
+    const t=mkTask({title:"面談設定",cat:"hr",date:today(),time:"20:00"});S.tasks[t.id]=t;
+    try{localStorage.setItem(LS+".seeded","1")}catch(e){}lsSave()}
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+  render();
+}
+
+/* ---------- iPhoneカレンダー通知 (.ics) ---------- */
+const icsEsc=s=>String(s||"").replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/([,;])/g,"\\$1");
+const utc=d=>d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+"T"+pad(d.getUTCHours())+pad(d.getUTCMinutes())+"00Z";
+function vevent(t){
+  const lead=Number(S.settings.lead)||0;const L=["BEGIN:VEVENT","UID:"+t.id+"@atodeyaru","SEQUENCE:"+Math.floor(Date.now()/1000),"DTSTAMP:"+utc(new Date()),"SUMMARY:"+icsEsc(t.title)];
+  if(t.time){const s=parse(t.date,t.time);L.push("DTSTART:"+utc(s),"DTEND:"+utc(new Date(s.getTime()+30*60e3)))}
+  else{L.push("DTSTART;VALUE=DATE:"+t.date.replace(/-/g,""),"DTEND;VALUE=DATE:"+addDays(t.date,1).replace(/-/g,""))}
+  const desc=[CATNAME[t.cat],t.note].filter(Boolean).join("\n");if(desc)L.push("DESCRIPTION:"+icsEsc(desc));
+  L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(t.title),"TRIGGER:"+(t.time?(lead?"-PT"+lead+"M":"PT0M"):"PT9H"),"END:VALARM","END:VEVENT");
+  return L.join("\r\n")}
+function saveFile(name,text,type){
+  const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60e3)}
+function addToCal(ts){
+  ts=ts.filter(t=>t.date&&!t.done);if(!ts.length){toast("日付のあるタスクがありません");return}
+  const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//atodeyaru//JA","CALSCALE:GREGORIAN","METHOD:PUBLISH",...ts.map(vevent),"END:VCALENDAR"].join("\r\n");
+  saveFile(ts.length===1?"task.ics":"tasks.ics",ics,"text/calendar;charset=utf-8");
+  const now=Date.now();ts.forEach(t=>{S.tasks[t.id]=Object.assign({},t,{cal:t.date+" "+(t.time||""),calAt:now})});lsSave();render();
+  toast(ts.length+"件をカレンダーへ。表示された画面で「追加」を押してください")}
+const calOk=t=>t.cal&&t.cal===t.date+" "+(t.time||"");
+
+/* ---------- task helpers ---------- */
+function mkTask(o){return Object.assign({id:uid(),title:"",cat:"etc",date:null,time:null,note:"",done:false,doneAt:null,cand:null,kind:null,createdAt:Date.now()},o)}
+const allTasks=()=>Object.values(S.tasks);
+function bucket(t){if(t.done)return"done";if(!t.date)return"open";if(t.date<=today())return"today";return"plan"}
+function sortT(a,b){return (a.date||"9").localeCompare(b.date||"9")||(a.time||"99").localeCompare(b.time||"99")||a.createdAt-b.createdAt}
+
+/* ---------- UI state ---------- */
+let view="task", tab="today", cat="all", candFilter="active";
+try{const u=JSON.parse(localStorage.getItem(LS+".ui")||"{}");if(u.tab)tab=u.tab;if(u.cat)cat=u.cat}catch(e){}
+const saveUi=()=>{try{localStorage.setItem(LS+".ui",JSON.stringify({tab,cat}))}catch(e){}};
+
+/* ---------- render ---------- */
+function render(){
+  document.getElementById("taskView").hidden=view!=="task";
+  document.getElementById("flowView").hidden=view!=="flow";
+  document.getElementById("flowBtn").classList.toggle("on",view==="flow");
+  document.getElementById("bar").hidden=view!=="task";
+  const ts=allTasks();
+  const inCat=t=>cat==="all"||t.cat===cat;
+  const late=ts.filter(t=>isLate(t)).length;
+  const bd=document.getElementById("bellDot");bd.hidden=!late;bd.textContent=late;
+  if(view==="task")renderTasks(ts.filter(inCat));else renderCands();
+  const days=S.settings.lastBackup?Math.floor((Date.now()-S.settings.lastBackup)/864e5):null;
+  document.getElementById("storage").textContent="データはこのiPhoneの中に保存されています・"+(days==null?"バックアップ未作成（⚙から）":"最終バックアップ "+days+"日前");
+}
+function renderTasks(ts){
+  const c={today:0,plan:0,open:0,done:0},lateN=ts.filter(isLate).length;
+  ts.forEach(t=>c[bucket(t)]++);
+  const cn=document.getElementById("counters");cn.replaceChildren(
+    ...[["today","今日"],["plan","予定"],["open","未定"],["done","完了"]].map(([k,n])=>el("button",{type:"button",class:"cnt"+(tab===k?" on":""),onclick:()=>{tab=k;saveUi();render()}},
+      el("b",null,c[k]),el("span",null,n),el("span",{class:"late"},k==="today"&&lateN?"期限切れ "+lateN:""))));
+  const ch=document.getElementById("chips");ch.replaceChildren(
+    ...[["all","すべて"],...CATS].map(([k,n])=>el("button",{type:"button",class:"chip"+(cat===k?" on":""),onclick:()=>{cat=k;saveUi();render()}},n)));
+  document.getElementById("capIn").placeholder=cat==="all"?"思いついたらここに（未定に入ります）":"「"+CATNAME[cat]+"」の未定に入ります";
+  const L=document.getElementById("list");L.replaceChildren();
+  let items=ts.filter(t=>bucket(t)===tab);
+  if(tab==="done"){items.sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));items=items.slice(0,60)}else items.sort(sortT);
+  if(!items.length){L.append(el("div",{class:"empty"},el("b",null,{today:"今日やることはありません",plan:"先の予定はまだありません",open:"未定のタスクはありません",done:"完了したタスクはまだありません"}[tab]),
+    tab==="done"?"チェックを付けるとここに移ります":"下の入力欄に書いて「追加」。日時を決めるなら「詳細」から"));return}
+  if(tab==="open"){L.append(el("div",{class:"sec"},"日時を決めて「予定」へ移しましょう"),el("div",{class:"list"},items.map(taskCard)));return}
+  if(tab==="done"){L.append(el("div",{class:"sec"},"最近完了したもの"),el("div",{class:"list"},items.map(taskCard)));return}
+  const lateI=items.filter(isLate),rest=items.filter(t=>!isLate(t));
+  if(lateI.length)L.append(el("div",{class:"sec late"},"期限切れ "+lateI.length+"件"),el("div",{class:"list"},lateI.map(taskCard)));
+  const groups={};rest.forEach(t=>(groups[t.date]=groups[t.date]||[]).push(t));
+  Object.keys(groups).sort().forEach(d=>L.append(el("div",{class:"sec"},label(d)),el("div",{class:"list"},groups[d].map(taskCard))));
+}
+function taskCard(t){
+  const late=isLate(t);
+  const grouped=(tab==="today"||tab==="plan")&&!isLate(t);const when=t.date?(grouped?"":shortDate(t.date)+" ")+(t.time||""):"";
+  const cand=t.cand&&S.cands[t.cand];
+  return el("div",{class:"task"+(t.done?" done":"")},
+    el("button",{type:"button",class:"chk","aria-label":t.done?"未完了に戻す":"完了にする",onclick:()=>toggleDone(t),html:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>'}),
+    el("div",{class:"tb"},
+      el("button",{type:"button",class:"ttl",onclick:()=>openTask(t)},t.title),
+      el("div",{class:"meta"},el("span",{class:"tag t-"+t.cat},CATNAME[t.cat]||"その他"),
+        when.trim()?el("span",{class:"when"+(late?" late":"")},when.trim()):null,
+        t.time&&!t.done?el("span",{html:BELL,"aria-label":"時刻あり"}):null,
+        cand&&!t.title.startsWith(cand.name)?el("span",null,"・"+cand.name):null),
+      t.note?el("div",{class:"note"},t.note):null,
+      t.done?null:el("div",{class:"quick"},
+        el("button",{type:"button",class:"qb",onclick:()=>quick(t,"h1")},"+1時間"),
+        el("button",{type:"button",class:"qb",onclick:()=>quick(t,"night")},"今夜"),
+        el("button",{type:"button",class:"qb",onclick:()=>quick(t,"morning")},"明日朝"),
+        el("button",{type:"button",class:"qb",onclick:()=>openTask(t)},"日時…"),
+        t.date?el("button",{type:"button",class:"calb"+(calOk(t)?" on":""),onclick:()=>addToCal([t])},calOk(t)?"✓ 通知登録済":"🔔 通知を登録"):null)));
+}
+function toggleDone(t){const n=Object.assign({},t,{done:!t.done,doneAt:t.done?null:Date.now()});putTask(n);
+  if(n.done)toast("完了：「"+t.title+"」",()=>putTask(Object.assign({},n,{done:false,doneAt:null})))}
+function quick(t,k){const now=new Date();let d;
+  if(k==="h1"){const base=t.date&&t.time&&parse(t.date,t.time)>now?parse(t.date,t.time):now;d=new Date(base.getTime()+3600e3);d.setMinutes(Math.ceil(d.getMinutes()/5)*5,0,0)}
+  else if(k==="night"){d=new Date();d.setHours(20,0,0,0);if(d<=now)d.setDate(d.getDate()+1)}
+  else{d=new Date();d.setDate(d.getDate()+1);d.setHours(9,0,0,0)}
+  putTask(Object.assign({},t,{date:ymd(d),time:hm(d)}));toast("「"+t.title+"」→ "+shortDate(ymd(d))+" "+hm(d))}
+
+/* ---------- capture ---------- */
+document.getElementById("cap").addEventListener("submit",e=>{e.preventDefault();const i=document.getElementById("capIn");const v=i.value.trim();if(!v)return;
+  putTask(mkTask({title:v,cat:cat==="all"?"etc":cat}));i.value="";toast("未定に追加しました");if(tab!=="open"&&tab!=="today"){} });
+document.getElementById("capDetail").addEventListener("click",()=>{const i=document.getElementById("capIn");openTask(mkTask({title:i.value.trim(),cat:cat==="all"?"etc":cat,date:today()}),true);i.value=""});
+
+/* ---------- sheets ---------- */
+const root=document.getElementById("sheetRoot");
+function sheet(title,body){close();const s=el("div",{class:"sheet",role:"dialog","aria-modal":"true"},el("h2",null,title),body);
+  const sc=el("div",{class:"scrim",onclick:e=>{if(e.target===sc)close()}},s);root.append(sc);return s}
+function close(){root.replaceChildren()}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
+const fld=(lab,input)=>el("div",{class:"fld"},el("label",{for:input.id},lab),input);
+
+function openTask(t,isNew){
+  const ti=el("input",{id:"f-title",value:t.title,placeholder:"例：〇〇さん 面談前日確認連絡"});
+  const cs=el("select",{id:"f-cat"},CATS.map(([k,n])=>el("option",{value:k,selected:t.cat===k},n)));
+  const di=el("input",{id:"f-date",type:"date",value:t.date||""});
+  const tm=el("input",{id:"f-time",type:"time",value:t.time||""});
+  const no=el("textarea",{id:"f-note",placeholder:"メモ（担当者・連絡先・URLなど）"});no.value=t.note||"";
+  let armed=false;
+  const delBtn=el("button",{type:"button",class:"btn danger",onclick:()=>{if(!armed){armed=true;delBtn.textContent="もう一度押して削除";return}del("tasks",t.id);close();toast("削除しました")}},"削除");
+  const quickDates=el("div",{class:"seg"},[["今日",0],["明日",1],["明後日",2],["来週",7],["未定",null]].map(([n,o])=>el("button",{type:"button",onclick:()=>{di.value=o==null?"":addDays(today(),o);if(o==null)tm.value=""}},n)));
+  const s=sheet(isNew?"タスクを追加":"タスクを編集",el("form",{onsubmit:e=>{e.preventDefault();const title=ti.value.trim();if(!title){ti.focus();return}
+      putTask(Object.assign({},t,{title,cat:cs.value,date:di.value||null,time:di.value&&tm.value?tm.value:null,note:no.value.trim()}));close();
+      toast(di.value?shortDate(di.value)+(tm.value?" "+tm.value:"")+" に設定しました":"未定に入れました")}},
+    fld("やること",ti),fld("カテゴリ",cs),
+    el("div",{class:"fld"},el("span",{class:"lbl"},"いつやる？"),quickDates),
+    el("div",{class:"row2"},fld("日付",di),fld("時刻（任意）",tm)),
+    fld("メモ",no),
+    el("div",{class:"sact"},isNew?el("button",{type:"button",class:"btn",onclick:close},"やめる"):delBtn,el("button",{type:"submit",class:"btn pri"},"保存"))));
+  if(isNew&&!t.title)setTimeout(()=>ti.focus(),50);
+}
+
+/* ---------- 採用フロー ---------- */
+document.getElementById("flowBtn").addEventListener("click",()=>{view=view==="flow"?"task":"flow";render();window.scrollTo(0,0)});
+document.getElementById("addCand").addEventListener("click",()=>openCandNew());
+
+function stagesOf(c){return MEDIA[c.media].s.concat(POST)}
+function renderCands(){
+  const cs=Object.values(S.cands);
+  const act=cs.filter(c=>!c.closed&&c.stage<stagesOf(c).length-1),fin=cs.filter(c=>c.closed||c.stage>=stagesOf(c).length-1);
+  document.getElementById("candChips").replaceChildren(...[["active","進行中 "+act.length],["closed","終了 "+fin.length]].map(([k,n])=>el("button",{type:"button",class:"chip"+(candFilter===k?" on":""),onclick:()=>{candFilter=k;render()}},n)));
+  const L=document.getElementById("candList");L.replaceChildren();
+  const list=(candFilter==="active"?act:fin).sort((a,b)=>b.createdAt-a.createdAt);
+  if(!list.length){L.append(el("div",{class:"empty"},el("b",null,candFilter==="active"?"進行中の候補者はいません":"終了した候補者はいません"),candFilter==="active"?"「＋ 候補者を追加」で応募・トスアップを登録すると、面談日程調整のタスクが今日に入ります":""));return}
+  list.forEach(c=>L.append(candCard(c)));
+}
+function nextEvent(c){const st=stagesOf(c)[c.stage];const ms=MEDIA[c.media].s;
+  if(["応募","トスアップ","面談調整"].includes(st))return"interview";
+  if(st==="面談実施"&&ms.includes("2次面談実施"))return"interview2";
+  if(st==="通過")return"interview2";
+  if(["内定","通過/内定","2次面談実施"].includes(st)||(st==="面談実施"&&!ms.includes("2次面談実施")))return"training";
+  if(st==="入社後研修")return"join";
+  if(["入社","入社手続き","入社後面談 日程回収","入社後面談 日程調整"].includes(st))return"after";
+  return null}
+const EV={interview:"面談日時を確定",interview2:"2次面談日時を確定",training:"研修日時を確定",join:"入社日を確定",after:"入社後面談を確定"};
+function candCard(c){
+  const ss=stagesOf(c),nMain=MEDIA[c.media].s.length;
+  const ct=allTasks().filter(t=>t.cand===c.id&&!t.done).sort(sortT);
+  const ev=nextEvent(c);
+  return el("div",{class:"cand"+(c.closed?" closed":"")},
+    el("div",{class:"ch"},el("b",null,c.name),el("span",{class:"media"},MEDIA[c.media].n),c.closed?el("span",{class:"tag t-etc"},c.closed):null,
+      c.joinDate?el("span",{class:"meta",style:"margin:0"},"入社 "+shortDate(c.joinDate)):null),
+    el("div",{class:"steps"},ss.map((s,i)=>el("button",{type:"button",class:"st"+(i>=nMain?" post":"")+(i<c.stage?" past":i===c.stage?" cur":""),
+      onclick:()=>{putCand(Object.assign({},c,{stage:i}));toast(c.name+"：「"+s+"」に変更")}},s))),
+    ct.length?el("div",{class:"ctasks"},ct.slice(0,4).map(t=>el("div",{class:isLate(t)?"late":""},"・"+(t.date?shortDate(t.date)+(t.time?" "+t.time:"")+"　":"日時未定　")+t.title.replace(c.name+" ",""))),ct.length>4?el("div",null,"ほか"+(ct.length-4)+"件"):null)
+      :el("div",{class:"cnext"},c.closed?"":"未完了のタスクはありません"),
+    c.closed?el("div",{class:"cact"},el("button",{type:"button",class:"btn sm",onclick:()=>{putCand(Object.assign({},c,{closed:null}))}},"進行中に戻す"),delCandBtn(c))
+    :el("div",{class:"cact"},
+      ev?el("button",{type:"button",class:"btn sm pri",onclick:()=>openEvent(c,ev)},EV[ev]):null,
+      el("button",{type:"button",class:"btn sm",onclick:()=>openEventPick(c)},"ほかの日程"),
+      el("button",{type:"button",class:"btn sm",onclick:()=>openClose(c)},"辞退・不採用")));
+}
+function delCandBtn(c){let armed=false;const b=el("button",{type:"button",class:"btn sm danger",onclick:()=>{if(!armed){armed=true;b.textContent="もう一度押して削除";return}
+  allTasks().filter(t=>t.cand===c.id).forEach(t=>del("tasks",t.id));del("cands",c.id);toast("削除しました")}},"候補者を削除");return b}
+function openClose(c){
+  const s=sheet(c.name+" をクローズ",el("div",null,el("p",{class:"help"},"未完了のタスクはまとめて完了扱いにします。"),
+    el("div",{class:"sact"},["辞退","不採用","連絡途絶"].map(r=>el("button",{type:"button",class:"btn",onclick:()=>{
+      allTasks().filter(t=>t.cand===c.id&&!t.done).forEach(t=>putTask(Object.assign({},t,{done:true,doneAt:Date.now()})));
+      putCand(Object.assign({},c,{closed:r}));close();toast(c.name+"："+r)}},r)))));
+}
+function openCandNew(){
+  let media="coco";
+  const ni=el("input",{id:"c-name",placeholder:"例：山田 花子"});
+  const seg=el("div",{class:"seg"},Object.entries(MEDIA).map(([k,m])=>el("button",{type:"button",class:k===media?"on":"","data-k":k,onclick:e=>{media=k;[...seg.children].forEach(b=>b.classList.toggle("on",b.dataset.k===k));flow.textContent=MEDIA[k].s.join(" → ")}},m.n)));
+  const flow=el("div",{class:"help"},MEDIA[media].s.join(" → "));
+  const ow=el("input",{id:"c-owner",placeholder:"任意"});
+  sheet("候補者を追加",el("form",{onsubmit:e=>{e.preventDefault();const name=ni.value.trim();if(!name){ni.focus();return}
+      const c={id:uid(),name,media,stage:1,owner:ow.value.trim(),closed:null,joinDate:null,createdAt:Date.now()};
+      putCand(c);
+      putTask(mkTask({title:name+" 面談日程調整",cat:"hr",date:today(),cand:c.id,kind:"adjust",note:MEDIA[media].n+(c.owner?"／担当 "+c.owner:"")}));
+      close();toast("今日に「"+name+" 面談日程調整」を入れました")}},
+    fld("名前",ni),el("div",{class:"fld"},el("span",{class:"lbl"},"媒体"),seg,flow),fld("紹介者・メモ",ow),
+    el("div",{class:"sact"},el("button",{type:"button",class:"btn",onclick:close},"やめる"),el("button",{type:"submit",class:"btn pri"},"追加して調整タスクを作成"))));
+  setTimeout(()=>ni.focus(),50);
+}
+function openEventPick(c){
+  sheet(c.name+"：日程を入れる",el("div",{class:"list"},Object.entries(EV).map(([k,n])=>el("button",{type:"button",class:"btn",style:"text-align:left",onclick:()=>openEvent(c,k)},n))));
+}
+/* task bundles per event */
+function bundle(c,ev,date,time,who){
+  const n=c.name,w=who?"（担当："+who+"）":"",T=[];
+  const conf=(d,t)=>{const x=parse(d,t);x.setHours(x.getHours()-2);if(x.getHours()<8)x.setHours(8,0);return hm(x)};
+  const add=(title,d,t,cat,kind)=>T.push({title:n+" "+title,date:d,time:t,cat:cat||"hr",kind});
+  if(ev==="interview"||ev==="interview2"){const L=ev==="interview"?"面談":"2次面談";
+    add(L+"前日確認連絡",addDays(date,-1),"10:00");
+    add(L+"当日確認連絡",date,time?conf(date,time):"09:00");
+    add(L+"実施"+w,date,time||null,"hr","held");
+    add("選考結果通知",addDays(date,1),"10:00","hr","result");}
+  if(ev==="training"){
+    add("研修用グループ作成＆詳細送信",today(),null);
+    add("研修前日確認連絡",addDays(date,-1),"10:00");
+    add("研修当日確認連絡",date,time?conf(date,time):"09:00");
+    add("研修実施"+w,date,time||null);}
+  if(ev==="join"){
+    add("入社日",date,time||null,"on");
+    add("入社手続き",date,null,"on");
+    add("入社後面談の日程回収",date,null,"on");
+    add("入社後面談の日程調整（担当者の調整完了まで）",addDays(date,2),null,"on");}
+  if(ev==="after"){add("入社後面談 実施確認"+w+"（担当者の実施完了まで）",date,time||null,"on");}
+  return T.filter(t=>!t.date||t.date>=today()||t.title.includes("実施")||t.title.includes("入社日"));
+}
+const STAGE_AFTER={interview:"面談実施",interview2:"2次面談実施",training:"入社後研修",join:"入社",after:"入社後面談 実施"};
+function openEvent(c,ev){
+  const di=el("input",{id:"e-date",type:"date",value:addDays(today(),ev==="join"?14:3)});
+  const ti=el("input",{id:"e-time",type:"time",value:ev==="join"?"":"14:00"});
+  const wi=el("input",{id:"e-who",placeholder:"例：佐藤",value:c.lastWho||""});
+  const pv=el("div",{class:"preview"});
+  const upd=()=>{pv.replaceChildren(...(di.value?bundle(c,ev,di.value,ti.value,wi.value.trim()).map(t=>el("div",null,el("span",null,(t.date?shortDate(t.date):"未定")+(t.time?" "+t.time:"")),el("span",null,t.title.replace(c.name+" ","")))):[el("div",null,"日付を入れると作成されるタスクが表示されます")]))};
+  [di,ti,wi].forEach(x=>x.addEventListener("input",upd));upd();
+  sheet(c.name+"："+EV[ev],el("form",{onsubmit:e=>{e.preventDefault();if(!di.value){di.focus();return}
+      const who=wi.value.trim();const ts=bundle(c,ev,di.value,ti.value,who);
+      ts.forEach(t=>putTask(mkTask(Object.assign(t,{cand:c.id,note:MEDIA[c.media].n}))));
+      if(ev==="interview")allTasks().filter(t=>t.cand===c.id&&t.kind==="adjust"&&!t.done).forEach(t=>putTask(Object.assign({},t,{done:true,doneAt:Date.now()})));
+      const si=stagesOf(c).indexOf(STAGE_AFTER[ev]);
+      putCand(Object.assign({},c,{stage:si>=0&&si>c.stage?si:c.stage,lastWho:who||c.lastWho||"",joinDate:ev==="join"?di.value:c.joinDate||null}));
+      close();toast(ts.length+"件作成。🔔からまとめて通知登録できます")}},
+    el("div",{class:"row2"},fld("日付",di),fld(ev==="join"?"時刻（任意）":"時刻",ti)),
+    ev==="join"?null:fld(ev==="after"?"面談担当者":"実施者",wi),
+    el("span",{class:"lbl"},"作成されるタスク"),pv,
+    el("div",{class:"sact"},el("button",{type:"button",class:"btn",onclick:close},"やめる"),el("button",{type:"submit",class:"btn pri"},"タスクを作成"))));
+}
+
+/* ---------- リマインド ---------- */
+document.getElementById("bellBtn").addEventListener("click",()=>{
+  const nowS=new Date();
+  const todo=allTasks().filter(t=>!t.done&&t.date&&!calOk(t)&&parse(t.date,t.time||"23:59")>nowS).sort(sortT);
+  const done=allTasks().filter(t=>!t.done&&t.date&&calOk(t)&&parse(t.date,t.time||"23:59")>nowS).length;
+  sheet("通知の登録",el("div",null,
+    el("div",{class:"help"},"通知はiPhoneのカレンダーから鳴らします。アプリを閉じていても、指定の時刻にロック画面へ通知が届きます。下のボタンを押すと予定の追加画面が開くので、「追加」または「すべてを追加」を押してください。"),
+    el("div",{class:"sec"},"まだ登録していない予定 "+todo.length+"件"+(done?"（登録済 "+done+"件）":"")),
+    todo.length?el("div",{class:"preview"},todo.slice(0,12).map(t=>el("div",null,el("span",null,shortDate(t.date)+" "+(t.time||"9:00通知")),el("span",null,t.title))),todo.length>12?el("div",null,el("span",null,""),el("span",null,"ほか"+(todo.length-12)+"件")):null):null,
+    el("div",{class:"sact"},el("button",{type:"button",class:"btn",onclick:close},"閉じる"),
+      todo.length?el("button",{type:"button",class:"btn pri",onclick:()=>{addToCal(todo);close()}},"まとめて登録"):null),
+    el("div",{class:"help",style:"margin-top:12px"},"日時を変えたタスクは「通知を登録」がもう一度表示されます。登録し直すと、カレンダーの予定も新しい日時に置き換わります。")));
+});
+document.getElementById("setBtn").addEventListener("click",()=>{
+  const fi=el("input",{type:"file",id:"imp",accept:".json,application/json",hidden:true,onchange:async()=>{
+    const f=fi.files[0];if(!f)return;try{const j=JSON.parse(await f.text());if(!j.tasks)throw 0;
+      S.tasks=j.tasks;S.cands=j.cands||{};lsSave();render();close();toast("復元しました（タスク"+Object.keys(S.tasks).length+"件）")}catch(e){toast("読み込めませんでした。バックアップのファイルを選んでください")}}});
+  sheet("設定",el("div",null,
+    el("span",{class:"lbl"},"通知のタイミング（時刻ありのタスク）"),
+    el("div",{class:"seg",style:"margin:6px 0 16px"},[[0,"ちょうど"],[10,"10分前"],[30,"30分前"],[60,"1時間前"]].map(([v,n])=>el("button",{type:"button",class:Number(S.settings.lead)===v?"on":"",onclick:e=>{S.settings.lead=v;lsSave();[...e.target.parentNode.children].forEach(b=>b.classList.toggle("on",b===e.target));toast("次の登録から「"+n+"」で通知します")}},n))),
+    el("span",{class:"lbl"},"バックアップ"),
+    el("div",{class:"help",style:"margin:4px 0 8px"},"データはこのiPhoneの中だけにあります。機種変更やアプリの削除に備えて、ときどき保存してください。「ファイル」アプリやiCloud Driveに保存できます。"),
+    el("div",{class:"setrow"},
+      el("button",{type:"button",class:"btn sm pri",onclick:()=>{S.settings.lastBackup=Date.now();lsSave();
+        saveFile("atodeyaru-backup-"+today()+".json",JSON.stringify({app:"atodeyaru",at:new Date().toISOString(),tasks:S.tasks,cands:S.cands},null,1),"application/json");render()}},"バックアップを保存"),
+      el("button",{type:"button",class:"btn sm",onclick:()=>fi.click()},"バックアップから復元"),fi),
+    el("div",{class:"sact"},el("button",{type:"button",class:"btn",onclick:close},"閉じる"))));
+});
+if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+
+/* ---------- toast & in-page alerts ---------- */
+let tt=null;
+function toast(msg,undo){const old=document.querySelector(".toast");if(old)old.remove();clearTimeout(tt);
+  const t=el("div",{class:"toast",role:"status"},msg,undo?el("button",{type:"button",style:"margin-left:12px;background:none;border:0;color:inherit;text-decoration:underline;font-weight:700",onclick:()=>{undo();t.remove()}},"元に戻す"):null);
+  document.body.append(t);tt=setTimeout(()=>t.remove(),undo?4500:2600)}
+const fired=new Set();
+setInterval(()=>{const now=new Date();allTasks().forEach(t=>{if(t.done||!t.date||!t.time||fired.has(t.id+t.date+t.time))return;const d=parse(t.date,t.time);
+  if(d<=now&&now-d<120e3){fired.add(t.id+t.date+t.time);toast("⏰ "+t.time+" "+t.title);try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}render()}})},30e3);
+setInterval(render,5*60e3);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
+
+initStore();
+})();
+</script>
+</body>
+</html>
